@@ -1,0 +1,27 @@
+project:
+  unity_project_path: ~/path/to/unity-project  # 必須: Unityプロジェクトのパス
+
+github:
+  repo: owner/repo  # 必須: GitHubリポジトリ (owner/repo形式)
+  # Fix PRのブランチ名・タイトルテンプレート（任意）
+  # プレースホルダー: ($Branch), ($Timestamp), ($Number), ($Title)
+  fix_branch_template: "($Branch)_fix_($Timestamp)"
+  fix_pr_title_template: "[自動修正] #($Number)「($Title)」"
+
+review:
+  enabled_reviewers:
+    - runtime_error
+    - security
+    - gc_allocation
+    - resource_management
+    - efficiency
+    - convention
+    - unused_code
+    - wheel_reinvention
+    - impact_analysis
+  # 報告のみで修正を行わないレビュワー
+  report_only_reviewers:
+    - impact_analysis
+
+claude:
+  model: opus  # sonnet または opus
