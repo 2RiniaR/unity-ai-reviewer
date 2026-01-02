@@ -1,10 +1,10 @@
-# PR Reviewer
+# Unity AI Reviewer
 
 Claude CLI を使用した自動PRレビュー＆修正システム
 
 ## 概要
 
-PR Reviewer は、Pull Request のコードを自動でレビューし、問題を検出して修正PRを作成するツールです。Unity C# プロジェクト向けに最適化されており、9種類の専門レビュワーが並列で分析を行います。
+Unity AI Reviewer は、Pull Request のコードを自動でレビューし、問題を検出して修正PRを作成するツールです。Unity C# プロジェクト向けに最適化されており、9種類の専門レビュワーが並列で分析を行います。
 
 ### 主な特徴
 
@@ -39,8 +39,8 @@ PR Reviewer は、Pull Request のコードを自動でレビューし、問題�
 ### インストール
 
 ```bash
-git clone https://github.com/your-repo/pr-reviewer.git
-cd pr-reviewer
+git clone https://github.com/your-repo/unity-ai-reviewer.git
+cd unity-ai-reviewer
 pip install -e .
 ```
 
@@ -181,7 +181,7 @@ claude:
 
 ### 3フェーズアーキテクチャ
 
-PR Reviewer は3つのフェーズでレビューから修正PRの作成までを実行します:
+Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成までを実行します:
 
 ```
 [Phase 1: 並列分析] → [Phase 2: Draft PR作成] → [Phase 3: 順次修正適用]
@@ -225,7 +225,7 @@ PR Reviewer は3つのフェーズでレビューから修正PRの作成まで�
 ### ディレクトリ構成
 
 ```
-pr-reviewer/
+unity-ai-reviewer/
 ├── config.example.yaml      # 設定ファイルのテンプレート
 ├── config.yaml              # 設定ファイル（git管理外）
 ├── pyproject.toml           # Python プロジェクト設定
@@ -254,7 +254,7 @@ pr-reviewer/
 
 ### 技術スタック
 
-- **Python 3.11+**: メイン言語
+- **Python+**: メイン言語
 - **Claude CLI**: AI レビュー実行
 - **GitHub CLI (gh)**: GitHub API 操作
 - **Pydantic**: データモデル/バリデーション
@@ -266,8 +266,8 @@ pr-reviewer/
 
 ```bash
 # リポジトリをクローン
-git clone https://github.com/your-repo/pr-reviewer.git
-cd pr-reviewer
+git clone https://github.com/your-repo/unity-ai-reviewer.git
+cd unity-ai-reviewer
 
 # 開発用依存関係をインストール
 pip install -e ".[dev]"
