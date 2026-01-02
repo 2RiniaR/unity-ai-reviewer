@@ -30,6 +30,7 @@ class ClaudeClient:
         debug: bool = False,
         json_schema: str | None = None,
         enable_tools: bool | str = False,
+        model: str | None = None,
     ) -> list[str]:
         """Build the claude CLI command.
 
@@ -38,6 +39,7 @@ class ClaudeClient:
             debug: Whether to enable debug output
             json_schema: Optional JSON schema for structured output
             enable_tools: Tool mode - False (no tools), "read_only" (Read only), True (all tools)
+            model: Model to use (defaults to config.claude.model)
 
         Returns:
             Command list for subprocess (user message will be passed via stdin)
@@ -46,7 +48,7 @@ class ClaudeClient:
             "claude",
             "-p",  # Print mode (non-interactive)
             "--output-format", "json",
-            "--model", self.config.claude.model,
+            "--model", model or self.config.claude.model,
             "--system-prompt", system_prompt,
         ]
 
@@ -145,6 +147,7 @@ class ClaudeClient:
         enable_tools: bool | str = False,
         env_vars: dict[str, str] | None = None,
         json_schema: str | None = None,
+        model: str | None = None,
     ) -> dict[str, Any]:
         """Run a review using Claude CLI.
 
@@ -156,6 +159,7 @@ class ClaudeClient:
             enable_tools: Tool mode - False (no tools), "read_only" (Read only), True (all tools)
             env_vars: Additional environment variables to pass to Claude
             json_schema: Custom JSON schema (defaults based on enable_tools)
+            model: Model to use (defaults to config.claude.model)
 
         Returns:
             Result dictionary with response and parsed findings
@@ -171,6 +175,7 @@ class ClaudeClient:
             debug=debug,
             json_schema=json_schema,
             enable_tools=enable_tools,
+            model=model,
         )
 
         # Prepare environment with additional variables

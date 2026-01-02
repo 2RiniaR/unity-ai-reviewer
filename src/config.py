@@ -25,6 +25,10 @@ class ReviewConfig(BaseModel):
     # 報告のみで修正を行わないレビュワー
     report_only_reviewers: list[str] = Field(default_factory=list)
 
+    # コンパイルチェック設定
+    compile_check_enabled: bool = True  # Phase3後にコンパイルチェックを実行
+    compile_fix_max_attempts: int = 5  # コンパイルエラー修正の最大試行回数
+
 
 class ClaudeConfig(BaseModel):
     """Claude CLI configuration."""

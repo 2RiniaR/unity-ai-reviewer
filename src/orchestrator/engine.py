@@ -890,6 +890,181 @@ class ReviewOrchestrator:
 
         return result.success
 
+    def run_compile_fix_loop(
+        self,
+        max_attempts: int = 5,
+        push_after_fix: bool = True,
+    ) -> dict[str, Any]:
+        """Run compile verification with automatic fix loop using Opus.
+
+        If compilation fails, use Claude Opus to fix the errors and retry.
+        Continues until compilation succeeds or max_attempts is reached.
+
+        Args:
+            max_attempts: Maximum number of fix attempts
+            push_after_fix: Whether to push fixes to remote
+
+        Returns:
+            Dict with success, attempts, errors
+        """
+        if self.metadata is None or self.review_path is None:
+            raise RuntimeError("Review not initialized")
+
+        from src.unity import UnityCompiler
+
+        console.print(Panel("コンパイル検証 & 自動修正フェーズ", title="Phase: Compile Verification"))
+
+        compiler = UnityCompiler(self.config.project.unity_project_path)
+        attempt = 0
+        last_errors: list[str] = []
+
+        while attempt < max_attempts:
+            attempt += 1
+            console.print(f"\n[cyan]コンパイルチェック (試行 {attempt}/{max_attempts})...[/cyan]")
+
+            result = compiler.compile(force_recompile=True)
+
+            if result.success:
+                console.print(f"[green]✓ コンパイル成功[/green]")
+                if result.warning_count > 0:
+                    console.print(f"  [yellow]警告: {result.warning_count} 件[/yellow]")
+
+                # Update metadata
+                from datetime import datetime
+                self.metadata.compile_results.last_check = datetime.now()
+                self.metadata.compile_results.status = Status.COMPLETED
+                self.metadata.compile_results.errors = []
+                self.metadata.compile_results.warnings = [
+                    f"{w.file}:{w.line}: {w.message}" for w in result.warnings
+                ]
+                self.metadata_handler.save_metadata(self.review_path, self.metadata)
+
+                return {
+                    "success": True,
+                    "attempts": attempt,
+                    "errors": [],
+                }
+
+            # Compilation failed - try to fix with Opus
+            error_messages = [
+                f"{e.file}:{e.line}: {e.message}" for e in result.errors
+            ]
+            console.print(f"[red]✗ コンパイルエラー: {result.error_count} 件[/red]")
+            for error in result.errors[:3]:
+                console.print(f"  - {error.file}:{error.line}: {error.message[:60]}...")
+
+            if attempt >= max_attempts:
+                console.print(f"[red]最大試行回数 ({max_attempts}) に達しました[/red]")
+                last_errors = error_messages
+                break
+
+            # Try to fix errors using Opus
+            console.print(f"\n[cyan]Opusでコンパイルエラーを修正中...[/cyan]")
+            fix_result = self._fix_compile_errors_with_opus(
+                error_messages,
+                push_after_fix=push_after_fix,
+            )
+
+            if not fix_result.get("success"):
+                console.print(f"[red]修正に失敗しました: {fix_result.get('error')}[/red]")
+                last_errors = error_messages
+                break
+
+            console.print(f"[green]修正を適用しました[/green]")
+
+        # Update metadata with failure
+        from datetime import datetime
+        self.metadata.compile_results.last_check = datetime.now()
+        self.metadata.compile_results.status = Status.FAILED
+        self.metadata.compile_results.errors = last_errors
+        self.metadata_handler.save_metadata(self.review_path, self.metadata)
+
+        return {
+            "success": False,
+            "attempts": attempt,
+            "errors": last_errors,
+        }
+
+    def _fix_compile_errors_with_opus(
+        self,
+        errors: list[str],
+        push_after_fix: bool = True,
+    ) -> dict[str, Any]:
+        """Fix compile errors using Claude Opus.
+
+        Args:
+            errors: List of compile error messages
+            push_after_fix: Whether to push after fixing
+
+        Returns:
+            Dict with success, error
+        """
+        errors_text = "\n".join(f"- {e}" for e in errors[:20])  # Limit to 20 errors
+
+        push_instruction = ""
+        if push_after_fix:
+            fix_branch = self._env_vars.get("FIX_BRANCH", "HEAD")
+            push_instruction = f"""
+4. 修正をプッシュ:
+   ```bash
+   git push origin {fix_branch}
+   ```
+"""
+        else:
+            push_instruction = "4. プッシュは不要です"
+
+        system_prompt = f"""あなたはUnity C#プロジェクトのコンパイルエラー修正エキスパートです。
+
+## 役割
+
+提供されたコンパイルエラーを分析し、修正してください。
+
+## 手順
+
+1. エラーメッセージを分析して原因を特定
+2. Readツールで対象ファイルを読み込む
+3. Editツールで修正を適用
+{push_instruction}
+
+## 重要
+
+- 1つのコミットで全てのエラーを修正してください
+- コミットメッセージは "[PR Review] Fix compile errors" としてください
+- エラーの根本原因を修正してください（表面的な修正ではなく）
+"""
+
+        user_message = f"""
+## コンパイルエラー
+
+以下のコンパイルエラーを修正してください:
+
+{errors_text}
+
+---
+
+上記のエラーを修正し、コミットしてください。
+"""
+
+        # Use Opus for complex error fixing
+        result = self.claude_client.run_review(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            debug=self.debug,
+            enable_tools=True,
+            env_vars=self._env_vars if self._env_vars else None,
+            model="opus",  # Use Opus for compile error fixing
+        )
+
+        if result.get("status") == "error":
+            return {"success": False, "error": result.get("error")}
+
+        # Check if commit was made
+        text = result.get("text", "")
+        if "git commit" in text.lower() or "コミット" in text:
+            return {"success": True}
+
+        return {"success": True}
+
     def get_review_summary(self) -> dict[str, Any]:
         """Get a summary of the current review.
 

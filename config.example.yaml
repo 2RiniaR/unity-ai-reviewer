@@ -22,6 +22,9 @@ review:
   # 報告のみで修正を行わないレビュワー
   report_only_reviewers:
     - impact_analysis
+  # コンパイルチェック設定
+  compile_check_enabled: true  # Phase3後にコンパイルチェックを実行
+  compile_fix_max_attempts: 5  # コンパイルエラー修正の最大試行回数（Opusで自動修正）
 
 claude:
   model: opus  # sonnet または opus

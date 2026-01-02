@@ -325,8 +325,20 @@ def run_github_review(
                 if fix_results['skipped']:
                     console.print(f"  [dim]スキップ: {len(fix_results['skipped'])} 件[/dim]")
 
+                # Run compile verification if enabled
+                compile_success = True
+                if config.review.compile_check_enabled and fix_results['applied']:
+                    console.print()
+                    compile_result = orchestrator.run_compile_fix_loop(
+                        max_attempts=config.review.compile_fix_max_attempts,
+                        push_after_fix=True,
+                    )
+                    compile_success = compile_result.get("success", False)
+                    if not compile_success:
+                        console.print(f"[yellow]⚠ コンパイルエラーが解消されませんでした[/yellow]")
+
                 # Mark draft PR as ready for review
-                if fix_results['applied']:
+                if fix_results['applied'] and compile_success:
                     console.print()
                     console.print("[cyan]Draft PRをOpenに変更中...[/cyan]")
                     if creator.mark_pr_ready(fix_result.fix_pr_number):
@@ -455,6 +467,16 @@ def run_local_branch_review(
                 console.print(f"  [red]失敗: {len(fix_results['failed'])} 件[/red]")
             if fix_results['skipped']:
                 console.print(f"  [dim]スキップ: {len(fix_results['skipped'])} 件[/dim]")
+
+            # Run compile verification if enabled (local mode: no push)
+            if config.review.compile_check_enabled and fix_results['applied']:
+                console.print()
+                compile_result = orchestrator.run_compile_fix_loop(
+                    max_attempts=config.review.compile_fix_max_attempts,
+                    push_after_fix=False,  # Local mode: don't push
+                )
+                if not compile_result.get("success", False):
+                    console.print(f"[yellow]⚠ コンパイルエラーが解消されませんでした[/yellow]")
 
         # Generate markdown report
         if orchestrator.metadata and orchestrator.review_path:
