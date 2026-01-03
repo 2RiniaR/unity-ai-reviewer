@@ -23,3 +23,11 @@ config.yaml
 reviews/*/
 !reviews/.gitkeep
 reviews/.current-review
+
+# Unity
+SampleUnityProject/Library/
+SampleUnityProject/Temp/
+SampleUnityProject/Logs/
+SampleUnityProject/UserSettings/
+SampleUnityProject/*.sln
+SampleUnityProject/*.csproj
