@@ -10,6 +10,7 @@ Unity AI Reviewer は、Pull Request のコードを自動でレビューし、�
 
 - **自動レビュー**: 9つの観点から並列でコードレビューを実行
 - **自動修正PR作成**: 検出した問題に対する修正を自動で適用し、PRを作成
+- **コンパイル検証**: 修正後に自動コンパイルチェック、エラー時はOpusが自動修正
 - **ローカルレビュー**: GitHub連携なしでローカルブランチのレビューも可能
 - **Unity対応**: Unity C# プロジェクトに特化したレビュー観点
 - **カスタマイズ可能**: レビュワーの有効/無効、テンプレート設定が可能
@@ -34,6 +35,7 @@ Unity AI Reviewer は、Pull Request のコードを自動でレビューし、�
 
 - Python 3.11+
 - [Claude CLI](https://github.com/anthropics/claude-code) がインストール済み
+- [uLoopMCP](https://github.com/hatayama/uLoopMCP) がClaude CLIのMCPサーバーとして設定済み
 - [GitHub CLI (gh)](https://cli.github.com/) がインストール済み（GitHub連携時）
 
 ### インストール
@@ -163,6 +165,9 @@ review:
     - impact_analysis
   report_only_reviewers:  # 報告のみで修正を行わないレビュワー
     - impact_analysis
+  # コンパイル検証設定
+  compile_check_enabled: true   # Phase3後にコンパイルチェックを実行
+  compile_fix_max_attempts: 5   # コンパイルエラー修正の最大試行回数
 
 claude:
   model: opus  # sonnet または opus
@@ -179,12 +184,12 @@ claude:
 
 ## 仕組み
 
-### 3フェーズアーキテクチャ
+### 3フェーズ + コンパイル検証アーキテクチャ
 
-Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成までを実行します:
+Unity AI Reviewer は3つのフェーズ + コンパイル検証でレビューから修正PRの作成までを実行します:
 
 ```
-[Phase 1: 並列分析] → [Phase 2: Draft PR作成] → [Phase 3: 順次修正適用]
+[Phase 1: 並列分析] → [Phase 2: Draft PR作成] → [Phase 3: 順次修正適用] → [コンパイル検証]
 ```
 
 #### Phase 1: 並列分析
@@ -220,7 +225,31 @@ Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成�
   3. コミット・プッシュ
 - 各修正完了後に PR コメントを投稿
 - PR body のサマリーテーブルを更新（commit hash リンク付き）
-- 全完了後、Draft を Open に変更
+
+#### コンパイル検証フェーズ
+
+Phase 3 の修正適用後、自動的にコンパイル検証を実行します:
+
+1. **コンパイルチェック**: uLoopMCP 経由で Unity コンパイルを実行
+2. **エラー検出時**: Claude Opus を使用して自動修正を試行
+3. **リトライ**: 最大試行回数（デフォルト: 5回）までコンパイル → 修正を繰り返し
+4. **成功時のみ PR を Open**: コンパイルが通らない場合は Draft のまま
+
+```
+コンパイルチェック
+    ↓ 失敗
+Opus で自動修正 → コミット → プッシュ
+    ↓
+再コンパイル（最大5回まで）
+    ↓ 成功
+Draft PR を Open に変更
+```
+
+この機能は `config.yaml` で無効化できます:
+```yaml
+review:
+  compile_check_enabled: false
+```
 
 ### ディレクトリ構成
 
