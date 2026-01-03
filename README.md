@@ -34,7 +34,6 @@ Unity AI Reviewer は、Pull Request のコードを自動でレビューし、�
 
 - Python 3.11+
 - [Claude CLI](https://github.com/anthropics/claude-code) がインストール済み
-- [uLoopMCP](https://github.com/hatayama/uLoopMCP) がClaude CLIのMCPサーバーとして設定済み
 - [GitHub CLI (gh)](https://cli.github.com/) がインストール済み（GitHub連携時）
 
 ### インストール
