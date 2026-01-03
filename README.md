@@ -6,6 +6,8 @@ Claude CLI を使用した自動PRレビュー＆修正システム
 
 Unity AI Reviewer は、Pull Request のコードを自動でレビューし、問題を検出して修正PRを作成するツールです。Unity C# プロジェクト向けに最適化されており、9種類の専門レビュワーが並列で分析を行います。
 
+[サンプルはこちらから](https://github.com/2RiniaR/unity-ai-reviewer/pull/7)
+
 ### 主な特徴
 
 - **自動レビュー**: 9つの観点から並列でコードレビューを実行
