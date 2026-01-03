@@ -10,10 +10,7 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        var player = GameObject.Find("Player");
-
         var activeEnemies = new List<Enemy>();
-
         ProcessFirstEnemy();
     }
 
@@ -35,9 +32,7 @@ public class GameManager : MonoBehaviour
     }
 }
 
-public class enemy
+public class Enemy
 {
-    public Transform transform;
-    public void UpdateAI() { }
     public void TakeDamage(int damage) { }
 }
