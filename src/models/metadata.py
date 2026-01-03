@@ -129,7 +129,7 @@ class ExplorationCache(BaseModel):
 class Finding(BaseModel):
     """A finding from a reviewer with phased fix tracking.
 
-    Phase 1 (Review): source_file, source_line, title, description, scenario, fix_plan
+    Phase 1 (Review): source_file, source_line, title, description, scenario, fix_plan, fix_summary
     Phase 2 (PR Creation): number (assigned sequentially)
     Phase 3 (Fix Application): file, line, line_end, commit_hash
     """
@@ -148,6 +148,7 @@ class Finding(BaseModel):
     description: str
     scenario: str | None = None  # Concrete scenario describing when the problem occurs
     fix_plan: str | None = None  # Plan for fixing the issue (Phase 1 output)
+    fix_summary: str | None = None  # Brief 1-2 sentence summary of the fix (for display)
 
     # Fix location - Phase 3 output (where the fix was applied, for PR comment display)
     file: str | None = None
@@ -156,6 +157,7 @@ class Finding(BaseModel):
 
     # Fix result - Phase 3 output
     commit_hash: str | None = None  # Hash of the fix commit
+    comment_url: str | None = None  # URL of the PR comment for this finding
 
 
 class Metadata(BaseModel):

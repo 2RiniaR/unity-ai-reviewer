@@ -208,6 +208,7 @@ class ReviewOrchestrator:
                                 description=finding_data.get("description", ""),
                                 scenario=scenario if scenario else None,
                                 fix_plan=finding_data.get("fix_plan"),
+                                fix_summary=finding_data.get("fix_summary"),
                                 # Phase 3: Not yet applied
                                 file=None,
                                 line=None,
@@ -1108,16 +1109,20 @@ class ReviewOrchestrator:
         # Summary table
         report_lines.append("## サマリー")
         report_lines.append("")
-        report_lines.append("| # | レビュワー | タイトル | ファイル | 行 | 状態 |")
-        report_lines.append("|---|-----------|---------|---------|-----|------|")
+        report_lines.append("| # | レビュワー | タイトル | 修正内容 | 行 | 状態 |")
+        report_lines.append("|---|-----------|---------|----------|-----|------|")
 
         for finding in self.metadata.findings:
             number = f"({finding.number})" if finding.number else "-"
             status = "✓ 適用済" if finding.file else "⚠ 未適用"
             line = str(finding.source_line) if finding.source_line else "-"
             file_short = Path(finding.source_file).name if finding.source_file else "-"
+            # Title with file name
+            title_cell = f"`{file_short}`<br>{finding.title}"
+            # fix_summary without truncation
+            fix_summary = finding.fix_summary or "-"
             report_lines.append(
-                f"| {number} | {finding.reviewer.value} | {finding.title} | {file_short} | {line} | {status} |"
+                f"| {number} | {finding.reviewer.value} | {title_cell} | {fix_summary} | {line} | {status} |"
             )
 
         report_lines.append("")
@@ -1149,6 +1154,12 @@ class ReviewOrchestrator:
                 report_lines.append("#### 発生シナリオ")
                 report_lines.append("")
                 report_lines.append(finding.scenario)
+                report_lines.append("")
+
+            if finding.fix_summary:
+                report_lines.append("#### 修正方法（要約）")
+                report_lines.append("")
+                report_lines.append(finding.fix_summary)
                 report_lines.append("")
 
             if finding.fix_plan:

@@ -35,6 +35,7 @@ BASE_REVIEWER_PROMPT = """あなたはUnity C#プロジェクトのエキスパ�
 4. **description**: 問題の説明（日本語、1-2文）
 5. **scenario**: 問題が発生する具体的なシナリオ
 6. **fix_plan**: 修正計画（どのように修正するかの説明）
+7. **fix_summary**: 修正方法の簡潔な要約（1-2文、PRコメント表示用）
 
 ### scenario の書き方
 
@@ -73,6 +74,14 @@ BASE_REVIEWER_PROMPT = """あなたはUnity C#プロジェクトのエキスパ�
 4. 修正理由: [なぜこの修正が問題を解決するか]
 ```
 
+### fix_summary の書き方
+
+修正内容を1-2文で簡潔に要約:
+- PRコメントやテーブルで表示されるため、短く分かりやすく
+- 技術的な詳細はfix_planに記載し、ここでは概要のみ
+- 例: 「nullチェックを追加してNullReferenceExceptionを防止」
+- 例: 「using文でラップしてリソースの確実な解放を保証」
+
 ### 出力例
 
 ```json
@@ -84,7 +93,8 @@ BASE_REVIEWER_PROMPT = """あなたはUnity C#プロジェクトのエキスパ�
       "title": "問題の簡潔なタイトル",
       "description": "問題の説明文（1-2文）",
       "scenario": "1. [操作A]\\n   → [状態変化]\\n2. [操作B]\\n   → [問題発生]",
-      "fix_plan": "修正内容の説明"
+      "fix_plan": "修正内容の説明",
+      "fix_summary": "修正方法の簡潔な要約（1-2文）"
     }
   ]
 }

@@ -290,16 +290,18 @@ def run_github_review(
                     if not fix_result.fix_pr_number:
                         return
 
-                    # Always post comment
+                    # Always post comment and save URL
                     # The comment will be posted to explain the finding and provide context
-                    posted = creator.post_single_explanation_comment(
+                    comment_url = creator.post_single_explanation_comment(
                         fix_result.fix_pr_number,
                         finding,
                     )
-                    if debug and not posted:
+                    if comment_url:
+                        finding.comment_url = comment_url
+                    elif debug:
                         console.print(f"[yellow]⚠ コメント投稿に失敗: ({finding.number})[/yellow]")
 
-                    # Always update PR body with new status
+                    # Always update PR body with new status (now includes comment_url)
                     creator.update_pr_body(
                         fix_result.fix_pr_number,
                         pr_number,

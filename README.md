@@ -187,7 +187,7 @@ Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成�
 #### Phase 1: 並列分析
 
 - 9個のレビュワーが **並列実行**（ThreadPoolExecutor）
-- 各レビュワーは問題を検出し、修正計画（fix_plan）を出力
+- 各レビュワーは問題を検出し、修正計画（fix_plan）と修正方法の要約（fix_summary）を出力
 - この段階ではファイル編集は行わない（分析のみ）
 - Claude CLI を `--tools Read` モードで実行
 
@@ -198,7 +198,8 @@ Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成�
 - title: 問題のタイトル
 - description: 問題の説明
 - scenario: 問題が発生するシナリオ
-- fix_plan: 修正計画
+- fix_plan: 修正計画（詳細）
+- fix_summary: 修正方法の要約（1-2文、PRコメント表示用）
 ```
 
 #### Phase 2: Draft PR 作成
