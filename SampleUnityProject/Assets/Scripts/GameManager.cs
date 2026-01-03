@@ -2,37 +2,37 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public class GameManager : MonoBehaviour
+namespace SampleGame
 {
-    private const string API_KEY = "sk-1234567890abcdef";
-
-    private List<Enemy> _enemies;
-
-    void Update()
+    public class GameManager : MonoBehaviour
     {
-        var activeEnemies = new List<Enemy>();
-        ProcessFirstEnemy();
+        private List<Enemy> _enemies;
+
+        private void Update()
+        {
+            ProcessFirstEnemy();
+        }
+
+        private void ProcessFirstEnemy()
+        {
+            var first = _enemies[0];
+            first.TakeDamage(10);
+        }
+
+        private void UnusedMethod()
+        {
+            Debug.Log("unused");
+        }
+
+        public string LoadData()
+        {
+            var reader = new StreamReader("data.txt");
+            return reader.ReadToEnd();
+        }
     }
 
-    void ProcessFirstEnemy()
+    public class Enemy
     {
-        var first = _enemies[0];
-        first.TakeDamage(10);
+        public void TakeDamage(int damage) { }
     }
-
-    private void UnusedMethod()
-    {
-        Debug.Log("This method is never called");
-    }
-
-    public void LoadData()
-    {
-        var reader = new StreamReader("data.txt");
-        string content = reader.ReadToEnd();
-    }
-}
-
-public class Enemy
-{
-    public void TakeDamage(int damage) { }
 }
