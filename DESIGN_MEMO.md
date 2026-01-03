@@ -50,9 +50,9 @@ PR レビューから修正 PR 作成までを3つのフェーズで実行：
 
 #### Phase 1: 並列分析（deep_analysis）
 - 9個のレビュワーが並列実行（ThreadPoolExecutor）
-- 各レビュワーは問題を検出し、`fix_plan`（修正計画）を出力
+- 各レビュワーは問題を検出し、`fix_plan`（修正計画）と`fix_summary`（修正方法の要約）を出力
 - **ツール使用なし**（分析のみ、ファイル編集なし）
-- 出力: `source_file`, `source_line`, `title`, `description`, `scenario`, `fix_plan`
+- 出力: `source_file`, `source_line`, `title`, `description`, `scenario`, `fix_plan`, `fix_summary`
 
 #### Phase 2: Draft PR 作成（fix_pr_creation）
 - 検出された問題に連番を割り当て: (1), (2), (3)...
@@ -112,7 +112,8 @@ class Finding:
     title: str              # 問題のタイトル
     description: str        # 問題の説明
     scenario: str           # 問題が発生するシナリオ
-    fix_plan: str           # 修正計画
+    fix_plan: str           # 修正計画（詳細）
+    fix_summary: str        # 修正方法の要約（1-2文、PRコメント表示用）
 
     # Phase 2 出力（番号割り当て）
     number: int             # 連番 (1), (2), (3)...

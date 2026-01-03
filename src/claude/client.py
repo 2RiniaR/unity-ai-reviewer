@@ -105,9 +105,13 @@ class ClaudeClient:
                         "fix_plan": {
                             "type": "string",
                             "description": "修正計画（どのように修正するかの説明）"
+                        },
+                        "fix_summary": {
+                            "type": "string",
+                            "description": "修正方法の簡潔な要約（1-2文、PRコメント表示用）"
                         }
                     },
-                    "required": ["source_file", "source_line", "title", "description", "scenario", "fix_plan"]
+                    "required": ["source_file", "source_line", "title", "description", "scenario", "fix_plan", "fix_summary"]
                 }
             }
         },

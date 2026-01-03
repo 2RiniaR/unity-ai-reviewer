@@ -465,17 +465,27 @@ class FixPRCreator:
         lines.extend([
             "### 修正一覧",
             "",
-            "| # | ステータス | レビュアー | タイトル | ファイル |",
-            "|---|------------|-----------|---------|---------|",
+            "| # | ステータス | レビュアー | タイトル | 修正内容 |",
+            "|---|------------|-----------|---------|----------|",
         ])
 
         for finding in findings:
             reviewer = finding.reviewer.display_name
-            # Escape pipe characters in title for table
-            title = finding.title.replace("|", "\\|")
             # Use source_file if file (fix location) is not yet set
             file_path = finding.file or finding.source_file
             file_name = file_path.split("/")[-1] if file_path else "N/A"
+
+            # Escape pipe characters in title
+            title_text = finding.title.replace("|", "\\|")
+            # Format: file name + line break + title (with optional link)
+            if finding.comment_url:
+                title_cell = f"`{file_name}`<br>[{title_text}]({finding.comment_url})"
+            else:
+                title_cell = f"`{file_name}`<br>{title_text}"
+
+            # fix_summary without truncation
+            fix_summary = finding.fix_summary or "-"
+            fix_summary = fix_summary.replace("|", "\\|")
 
             if finding.commit_hash:
                 # Create commit link
@@ -489,7 +499,7 @@ class FixPRCreator:
                 status = "⏳ 待機中"
 
             lines.append(
-                f"| ({finding.number}) | {status} | {reviewer} | {title} | `{file_name}` |"
+                f"| ({finding.number}) | {status} | {reviewer} | {title_cell} | {fix_summary} |"
             )
 
         lines.extend([
@@ -580,34 +590,34 @@ class FixPRCreator:
             finding.description,
         ]
 
-        # Add details section with scenario and commit hash
-        details_content = []
-
-        if finding.scenario:
-            details_content.extend([
-                "### 問題が発生するシナリオ",
+        # Add fix_summary outside of <details> (not collapsed)
+        if finding.fix_summary:
+            lines.extend([
                 "",
-                finding.scenario,
+                f"**修正方法**: {finding.fix_summary}",
             ])
 
+        # Add commit link right after fix_summary (outside of <details>)
         if finding.commit_hash:
             if repo_base:
-                commit_link = f"[`{finding.commit_hash[:7]}`]({repo_base}/commit/{finding.commit_hash})"
+                commit_link = f"[修正内容はここから確認できます]({repo_base}/commit/{finding.commit_hash})"
             else:
-                commit_link = f"`{finding.commit_hash}`"
-            if details_content:
-                details_content.append("")
-            details_content.append(f"🔧 コミット: {commit_link}")
+                commit_link = f"コミット: `{finding.commit_hash}`"
+            lines.extend([
+                "",
+                f"🔧 {commit_link}",
+            ])
 
-        if details_content:
+        # Add details section with scenario only
+        if finding.scenario:
             lines.extend([
                 "",
                 "<details>",
                 "<summary>詳細</summary>",
                 "",
-            ])
-            lines.extend(details_content)
-            lines.extend([
+                "### 問題が発生するシナリオ",
+                "",
+                finding.scenario,
                 "",
                 "</details>",
             ])
@@ -695,7 +705,7 @@ class FixPRCreator:
         self,
         fix_pr_number: int,
         finding: Finding,
-    ) -> bool:
+    ) -> str | None:
         """Post a single explanation comment for a finding (Phase 3).
 
         Called after each fix is committed during Phase 3.
@@ -706,7 +716,7 @@ class FixPRCreator:
             finding: The finding that was just fixed
 
         Returns:
-            True if comment was posted successfully
+            Comment URL if posted successfully, None otherwise
         """
         try:
             # Get the fix PR info
@@ -782,7 +792,7 @@ class FixPRCreator:
                             print(f"[DEBUG] Skipping comment: no commentable lines found")
                         return False
 
-            self.github_client.create_review_comment(
+            comment_result = self.github_client.create_review_comment(
                 pr_number=fix_pr_number,
                 body=comment_body,
                 commit_sha=fix_pr.head_sha,
@@ -791,10 +801,13 @@ class FixPRCreator:
                 start_line=start_line,
             )
 
+            comment_url = comment_result.get("html_url")
             if self.debug:
                 print(f"[DEBUG] Comment posted successfully for ({finding.number})")
+                if comment_url:
+                    print(f"[DEBUG]   URL: {comment_url}")
 
-            return True
+            return comment_url
 
         except Exception as e:
             console.print(f"[yellow]    警告: ({finding.number}) のコメント投稿に失敗[/yellow]")
@@ -803,7 +816,7 @@ class FixPRCreator:
                 print(f"[DEBUG]   file={finding.file or finding.source_file}")
                 print(f"[DEBUG]   line={finding.line or finding.source_line}")
                 print(f"[DEBUG]   Error: {e}")
-            return False
+            return None
 
     def update_pr_body(
         self,
