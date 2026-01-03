@@ -548,9 +548,8 @@ class ReviewOrchestrator:
 
         For each finding:
         1. Apply the fix using Claude with tools enabled (based on fix_plan)
-        2. Run compile check
-        3. Commit and push
-        4. Update finding with commit_hash and fix location
+        2. Commit and push
+        3. Update finding with commit_hash and fix location
 
         Args:
             on_finding_fixed: Optional callback called after each finding is fixed
@@ -838,57 +837,6 @@ class ReviewOrchestrator:
 
         return None
 
-    def run_compile_verification(self) -> bool:
-        """Run compile verification phase using uLoopMCP.
-
-        This phase verifies that the codebase compiles successfully.
-        It can be used to check if suggested changes would break the build.
-
-        Returns:
-            True if compilation succeeded, False otherwise
-        """
-        if self.metadata is None or self.review_path is None:
-            raise RuntimeError("Review not initialized")
-
-        from src.unity import UnityCompiler
-
-        console.print(Panel("コンパイル検証フェーズを開始", title="Phase: Compile Verification"))
-        self.metadata.review_state.phases.compile_verification = Status.IN_PROGRESS
-        self.metadata.review_state.current_phase = Phase.COMPILE_VERIFICATION
-        self.metadata_handler.save_metadata(self.review_path, self.metadata)
-
-        compiler = UnityCompiler(self.config.project.unity_project_path)
-
-        console.print("  [cyan]Unityコンパイルを実行中...[/cyan]")
-        result = compiler.compile(force_recompile=False)
-
-        # Update compile results in metadata
-        from datetime import datetime
-        self.metadata.compile_results.last_check = datetime.now()
-        self.metadata.compile_results.errors = [
-            f"{e.file}:{e.line}: {e.message}" for e in result.errors
-        ]
-        self.metadata.compile_results.warnings = [
-            f"{w.file}:{w.line}: {w.message}" for w in result.warnings
-        ]
-
-        if result.success:
-            self.metadata.compile_results.status = Status.COMPLETED
-            self.metadata.review_state.phases.compile_verification = Status.COMPLETED
-            console.print(f"  [green]✓[/green] コンパイル成功")
-            if result.warning_count > 0:
-                console.print(f"    [yellow]警告: {result.warning_count} 件[/yellow]")
-        else:
-            self.metadata.compile_results.status = Status.FAILED
-            self.metadata.review_state.phases.compile_verification = Status.FAILED
-            console.print(f"  [red]✗[/red] コンパイル失敗")
-            console.print(f"    [red]エラー: {result.error_count} 件[/red]")
-            for error in result.errors[:5]:  # Show first 5 errors
-                console.print(f"      - {error.file}:{error.line}: {error.message[:80]}")
-
-        self.metadata_handler.save_metadata(self.review_path, self.metadata)
-
-        return result.success
 
     def get_review_summary(self) -> dict[str, Any]:
         """Get a summary of the current review.
@@ -911,7 +859,6 @@ class ReviewOrchestrator:
             "findings": {
                 "total": len(self.metadata.findings),
             },
-            "compile_status": self.metadata.compile_results.status.value if self.metadata.compile_results else None,
         }
 
     def run_local_fix_application_phase(self) -> dict[str, Any]:

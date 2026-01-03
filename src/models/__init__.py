@@ -1,7 +1,6 @@
 """Data models for PR Reviewer."""
 
 from src.models.metadata import (
-    CompileResults,
     ExplorationItem,
     Finding,
     Metadata,
@@ -21,7 +20,6 @@ __all__ = [
     "ReviewerType",
     "ExplorationItem",
     "Finding",
-    "CompileResults",
     "Phase",
     "Status",
 ]
