@@ -17,7 +17,6 @@ class Phase(str, Enum):
     DEEP_ANALYSIS = "deep_analysis"  # Phase 1: Parallel review (analysis only)
     FIX_PR_CREATION = "fix_pr_creation"  # Phase 2: Create draft PR with summary
     FIX_APPLICATION = "fix_application"  # Phase 3: Sequential fix application
-    COMPILE_VERIFICATION = "compile_verification"
     COMMENT_POSTING = "comment_posting"
 
 
@@ -97,7 +96,6 @@ class PhaseStatus(BaseModel):
     deep_analysis: Status = Status.PENDING  # Phase 1: Parallel review
     fix_pr_creation: Status = Status.PENDING  # Phase 2: Create draft PR
     fix_application: Status = Status.PENDING  # Phase 3: Sequential fix
-    compile_verification: Status = Status.PENDING
     comment_posting: Status = Status.PENDING
 
 
@@ -160,15 +158,6 @@ class Finding(BaseModel):
     commit_hash: str | None = None  # Hash of the fix commit
 
 
-class CompileResults(BaseModel):
-    """Results from Unity compilation."""
-
-    last_check: datetime | None = None
-    status: Status = Status.PENDING
-    errors: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-
-
 class Metadata(BaseModel):
     """Complete metadata for a PR review."""
 
@@ -187,7 +176,6 @@ class Metadata(BaseModel):
     exploration_cache: ExplorationCache = Field(default_factory=ExplorationCache)
 
     findings: list[Finding] = Field(default_factory=list)
-    compile_results: CompileResults = Field(default_factory=CompileResults)
 
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)

@@ -25,7 +25,6 @@ PythonからClaudeを呼び出し、Pull Requestに対して反復的にコー�
 - Pythonスクリプトから Claude CLI (`claude -p`) を呼び出す（コスト削減のためAPIではなくCLI経由）
 - `--json-schema` オプションで構造化出力を強制（findings配列を確実に取得）
 - 反復的探索：メタデータファイルで探索状態を管理
-- subagent / uLoopMCP を活用してコード探索・Unityコンパイル実行
 - 出力は日本語、問題の「なぜ（reason）」も説明する
 
 ### GitHub連携
@@ -33,10 +32,6 @@ PythonからClaudeを呼び出し、Pull Requestに対して反復的にコー�
 - PR open をトリガーに発動（GitHub Actions）
 - レビュー結果をPRコメントとして投稿
 - 修正案は GitHub Suggested Changes 形式で提示（画面から即適用可能）
-
-### Unity連携
-
-- 修正案を提示する前に、必ずUnityコンパイルが通ることを確認
 
 ### 探索パラメータ
 
@@ -70,8 +65,7 @@ PR レビューから修正 PR 作成までを3つのフェーズで実行：
 - Claude CLIにツールを有効化して修正を実行:
   1. ファイル読み込み（Read）
   2. 修正適用（Edit）
-  3. コンパイル確認（`python3 -m pr_reviewer.unity.compile_check`）
-  4. コミット・プッシュ（`git add`, `git commit -m "[PR Review] (N) タイトル"`, `git push`）
+  3. コミット・プッシュ（`git add`, `git commit -m "[PR Review] (N) タイトル"`, `git push`）
 - 各修正完了後にPRコメントを投稿（修正理由、シナリオ）
 - PR bodyのサマリーテーブルを更新（commit hashリンク付き）
 - 全完了後、DraftをOpenに変更
@@ -97,8 +91,6 @@ reviewer/
 │   │   ├── client.py        # gh CLI経由のAPI操作
 │   │   ├── fix_pr_creator.py # Fix PR作成・コメント投稿
 │   │   └── git_operations.py # git操作
-│   └── unity/               # Unity連携（uLoopMCP経由）
-│       └── compile_check.py # コンパイル検証スクリプト
 └── reviews/                 # レビュー結果保存（デバッグ出力含む）
 ```
 

@@ -40,11 +40,6 @@ def parse_args() -> argparse.Namespace:
         help="Enable debug output",
     )
     review_parser.add_argument(
-        "--no-verify-compile",
-        action="store_true",
-        help="Skip compile verification (default: verify enabled)",
-    )
-    review_parser.add_argument(
         "--no-pr",
         action="store_true",
         help="Don't create fix PR (default: create fix PR)",
@@ -107,7 +102,6 @@ def parse_args() -> argparse.Namespace:
 def run_github_review(
     pr_number: int,
     debug: bool = False,
-    verify_compile: bool = True,
     create_fix_pr: bool = True,
 ) -> int:
     """Run a review on a GitHub PR and create fix PR.
@@ -115,7 +109,6 @@ def run_github_review(
     Args:
         pr_number: Pull request number
         debug: Whether to enable debug output
-        verify_compile: If True, verify suggested changes compile via uLoopMCP.
         create_fix_pr: If True, create a fix PR with all verified suggestions.
 
     Returns:
@@ -297,7 +290,7 @@ def run_github_review(
                     if not fix_result.fix_pr_number:
                         return
 
-                    # Always post comment (even if fix failed due to compile error)
+                    # Always post comment
                     # The comment will be posted to explain the finding and provide context
                     posted = creator.post_single_explanation_comment(
                         fix_result.fix_pr_number,
@@ -619,7 +612,6 @@ def main() -> int:
         return run_github_review(
             pr_number=args.pr,
             debug=args.debug,
-            verify_compile=not args.no_verify_compile,
             create_fix_pr=not args.no_pr,
         )
     elif args.command == "fix-pr":

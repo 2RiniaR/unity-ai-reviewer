@@ -34,6 +34,7 @@ Unity AI Reviewer は、Pull Request のコードを自動でレビューし、�
 
 - Python 3.11+
 - [Claude CLI](https://github.com/anthropics/claude-code) がインストール済み
+- [uLoopMCP](https://github.com/hatayama/uLoopMCP) がClaude CLIのMCPサーバーとして設定済み
 - [GitHub CLI (gh)](https://cli.github.com/) がインストール済み（GitHub連携時）
 
 ### インストール
@@ -83,9 +84,6 @@ pr-review review --pr 123 --debug
 
 # 分析のみ（修正PR作成なし）
 pr-review review --pr 123 --no-pr
-
-# コンパイル検証をスキップ
-pr-review review --pr 123 --no-verify-compile
 ```
 
 ### ローカルブランチレビュー
@@ -179,7 +177,7 @@ claude:
 
 ## 仕組み
 
-### 3フェーズアーキテクチャ
+### 3フェーズ
 
 Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成までを実行します:
 
@@ -220,7 +218,6 @@ Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成�
   3. コミット・プッシュ
 - 各修正完了後に PR コメントを投稿
 - PR body のサマリーテーブルを更新（commit hash リンク付き）
-- 全完了後、Draft を Open に変更
 
 ### ディレクトリ構成
 
@@ -242,8 +239,6 @@ unity-ai-reviewer/
 │   │   ├── client.py        # gh CLI 経由の API 操作
 │   │   ├── fix_pr_creator.py # Fix PR 作成
 │   │   └── git_operations.py # git 操作
-│   └── unity/               # Unity 連携
-│       └── compile_check.py # コンパイル検証
 └── reviews/                 # レビュー結果保存
     └── {PR番号}-{タイムスタンプ}/
         ├── metadata.json    # レビューメタデータ
