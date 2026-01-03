@@ -15,11 +15,6 @@ public class PlayerController : MonoBehaviour
         var first = _items[0];
         first.Use();
     }
-
-    public void OnMove(Vector3 direction)
-    {
-        transform.Translate(direction * Time.deltaTime);
-    }
 }
 
 public class Item
