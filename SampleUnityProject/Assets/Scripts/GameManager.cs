@@ -15,6 +15,10 @@ namespace SampleGame
 
         private void ProcessFirstEnemy()
         {
+            if (_enemies == null || _enemies.Count == 0)
+            {
+                return;
+            }
             var first = _enemies[0];
             first.TakeDamage(10);
         }
