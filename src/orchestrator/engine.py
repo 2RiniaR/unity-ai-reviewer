@@ -22,6 +22,7 @@ from src.models import (
     PRInfo,
     ReviewerType,
     Status,
+    UsageTracker,
 )
 from src.github.git_operations import GitOperations
 from src.orchestrator.metadata import MetadataHandler
@@ -54,6 +55,7 @@ class ReviewOrchestrator:
         self.pr_diff: str | None = None
         self._lock = threading.Lock()  # For thread-safe metadata access
         self._env_vars: dict[str, str] = {}  # Environment variables for Claude
+        self.usage_tracker = UsageTracker()  # Track Claude API costs
 
     def set_env_vars(
         self,
@@ -238,6 +240,9 @@ class ReviewOrchestrator:
             f"[green]分析完了。{len(self.metadata.findings)} 件の問題を検出しました。[/green]"
         )
 
+        # Display Phase 1 cost summary
+        self._print_cost_summary("Phase 1", self.usage_tracker.get_phase1_total())
+
     def _run_reviewer_analysis(
         self, reviewer_type: ReviewerType
     ) -> list[dict[str, Any]]:
@@ -293,8 +298,13 @@ class ReviewOrchestrator:
             env_vars=self._env_vars if self._env_vars else None,
         )
 
+        # Track API cost
+        cost_usd = result.get("cost_usd", 0.0)
+        with self._lock:
+            self.usage_tracker.add_phase1_usage(cost_usd)
+
         if self.debug:
-            console.print(f"[dim]Debug - {reviewer_type.value}: Status={result.get('status')}, Findings={len(result.get('findings', []))}[/dim]")
+            console.print(f"[dim]Debug - {reviewer_type.value}: Status={result.get('status')}, Findings={len(result.get('findings', []))}, Cost=${cost_usd:.4f}[/dim]")
 
         # Save debug response (full JSON response)
         if self.debug and self.review_path:
@@ -635,6 +645,13 @@ class ReviewOrchestrator:
         if results["skipped"]:
             console.print(f"  [dim]スキップ: {len(results['skipped'])} 件[/dim]")
 
+        # Display Phase 3 cost summary with cumulative total
+        self._print_cost_summary(
+            "Phase 3",
+            self.usage_tracker.get_phase3_total(),
+            total=self.usage_tracker.get_total(),
+        )
+
         return results
 
     def _apply_single_fix(self, finding: Finding) -> dict[str, Any]:
@@ -703,6 +720,10 @@ class ReviewOrchestrator:
             enable_tools=True,  # Phase 3: Enable tools for editing
             env_vars=self._env_vars if self._env_vars else None,
         )
+
+        # Track API cost
+        cost_usd = result.get("cost_usd", 0.0)
+        self.usage_tracker.add_phase3_usage(cost_usd)
 
         if result.get("status") == "error":
             return {"success": False, "error": result.get("error")}
@@ -871,6 +892,13 @@ class ReviewOrchestrator:
         self.metadata.review_state.phases.fix_application = Status.COMPLETED
         self.metadata_handler.save_metadata(self.review_path, self.metadata)
 
+        # Display Phase 3 cost summary with cumulative total
+        self._print_cost_summary(
+            "Phase 3",
+            self.usage_tracker.get_phase3_total(),
+            total=self.usage_tracker.get_total(),
+        )
+
         return results
 
     def _apply_local_fix(self, finding: Finding) -> dict[str, Any]:
@@ -951,6 +979,10 @@ class ReviewOrchestrator:
             enable_tools=True,  # Enable tools for editing
             env_vars=self._env_vars if self._env_vars else None,
         )
+
+        # Track API cost
+        cost_usd = result.get("cost_usd", 0.0)
+        self.usage_tracker.add_phase3_usage(cost_usd)
 
         if result.get("status") == "error":
             # Even on error, check if commit was created
@@ -1113,3 +1145,26 @@ class ReviewOrchestrator:
         report_path.write_text("\n".join(report_lines), encoding="utf-8")
 
         return report_path
+
+    def _print_cost_summary(
+        self,
+        phase_name: str,
+        phase_cost: float,
+        total: float | None = None,
+    ) -> None:
+        """Display a cost summary panel.
+
+        Args:
+            phase_name: Name of the phase (e.g., "Phase 1", "Phase 3")
+            phase_cost: Cost for this phase in USD
+            total: Optional cumulative total cost in USD
+        """
+        lines = [f"{phase_name}: ${phase_cost:.4f}"]
+        if total is not None:
+            lines.append(f"累計: ${total:.4f}")
+
+        console.print(Panel(
+            "\n".join(lines),
+            title="Claude Code コストサマリ",
+            border_style="cyan",
+        ))
