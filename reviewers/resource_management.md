@@ -1,6 +1,7 @@
-"""Resource management reviewer prompt."""
+---
+title: リソース管理
+---
 
-PROMPT = """
 ## 責務
 
 このレビュワーの責務は **リソース管理問題の発見** です。
@@ -46,4 +47,3 @@ PROMPT = """
 ```csharp
 // 改善後のコード例
 ```
-"""
