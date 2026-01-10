@@ -403,3 +403,83 @@ class GitOperations:
             return result.stdout.strip()
         except subprocess.CalledProcessError:
             return None
+
+    def get_commit_diff(self, commit_hash: str) -> str | None:
+        """Get the diff for a specific commit.
+
+        Args:
+            commit_hash: Commit hash to get diff for
+
+        Returns:
+            Diff string, or None on error
+        """
+        try:
+            result = self._run(["show", "--format=", commit_hash])
+            return result.stdout
+        except subprocess.CalledProcessError:
+            return None
+
+    def find_largest_hunk(self, diff: str) -> tuple[str, int, int] | None:
+        """Find the largest hunk in a diff.
+
+        Hunk size is determined by the total number of changed lines (+ and -).
+
+        Args:
+            diff: Git diff format string
+
+        Returns:
+            (file_path, start_line, end_line) or None if not found.
+            end_line is capped at start_line + 9 (max 10 lines).
+        """
+        import re
+
+        largest_hunk: tuple[str, int, int, int] | None = None  # (file, start, end, size)
+        current_file: str | None = None
+
+        lines = diff.split("\n")
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            # Match file header: diff --git a/path b/path
+            file_match = re.match(r"^diff --git a/.+ b/(.+)$", line)
+            if file_match:
+                current_file = file_match.group(1)
+                i += 1
+                continue
+
+            # Match hunk header: @@ -old_start,count +new_start,count @@
+            hunk_match = re.match(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
+            if hunk_match and current_file:
+                hunk_start = int(hunk_match.group(1))
+                i += 1
+
+                # Count changed lines in this hunk
+                change_count = 0
+                hunk_lines = 0
+                while i < len(lines):
+                    hunk_line = lines[i]
+                    if hunk_line.startswith("diff --git") or hunk_line.startswith("@@"):
+                        break
+                    if hunk_line.startswith("+") and not hunk_line.startswith("+++"):
+                        change_count += 1
+                        hunk_lines += 1
+                    elif hunk_line.startswith("-") and not hunk_line.startswith("---"):
+                        change_count += 1
+                    elif hunk_line.startswith(" "):
+                        hunk_lines += 1
+                    i += 1
+
+                if change_count > 0:
+                    # Cap end_line at start + 9 (max 10 lines)
+                    end_line = hunk_start + min(hunk_lines - 1, 9) if hunk_lines > 0 else hunk_start
+
+                    if largest_hunk is None or change_count > largest_hunk[3]:
+                        largest_hunk = (current_file, hunk_start, end_line, change_count)
+                continue
+
+            i += 1
+
+        if largest_hunk:
+            return (largest_hunk[0], largest_hunk[1], largest_hunk[2])
+        return None
