@@ -7,10 +7,16 @@ namespace SampleGame
     public class GameManager : MonoBehaviour
     {
         private List<Enemy> _enemies;
+        private float _damageInterval = 1.0f; // 1秒ごと
+        private float _lastDamageTime;
 
         private void Update()
         {
-            ProcessFirstEnemy();
+            if (Time.time - _lastDamageTime >= _damageInterval)
+            {
+                ProcessFirstEnemy();
+                _lastDamageTime = Time.time;
+            }
         }
 
         private void ProcessFirstEnemy()
