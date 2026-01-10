@@ -254,14 +254,61 @@ class GitHubClient:
             body: Comment body (markdown)
 
         Returns:
-            Created comment data
+            Created comment data including 'id' and 'html_url'
         """
-        result = self._run_gh([
-            "pr", "comment", str(pr_number),
-            "--body", body,
-        ])
+        repo = self._get_repo()
+        payload = {"body": body}
 
-        return {"status": "created", "output": result.stdout}
+        cmd = [
+            "gh", "api",
+            f"repos/{repo}/issues/{pr_number}/comments",
+            "-X", "POST",
+            "--input", "-",
+        ]
+
+        result = subprocess.run(
+            cmd,
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        return json.loads(result.stdout)
+
+    def update_issue_comment(
+        self,
+        comment_id: int,
+        body: str,
+    ) -> dict[str, Any]:
+        """Update an existing issue comment.
+
+        Args:
+            comment_id: Comment ID (from create_issue_comment result)
+            body: New comment body (markdown)
+
+        Returns:
+            Updated comment data
+        """
+        repo = self._get_repo()
+        payload = {"body": body}
+
+        cmd = [
+            "gh", "api",
+            f"repos/{repo}/issues/comments/{comment_id}",
+            "-X", "PATCH",
+            "--input", "-",
+        ]
+
+        result = subprocess.run(
+            cmd,
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        return json.loads(result.stdout)
 
     def create_review(
         self,

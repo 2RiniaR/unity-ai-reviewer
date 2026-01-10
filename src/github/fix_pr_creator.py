@@ -213,19 +213,8 @@ class FixPRCreator:
                 self._restore_branch(original_branch, stashed)
                 return result
 
-            # 6. Post link comment on original PR (with author mention)
+            # 6. Link comment on original PR is now handled by ProgressCommentManager in main.py
             # Note: Explanation comments are posted in Phase 3 after each fix
-            pending_count = len([f for f in all_findings if not f.commit_hash])
-            self._post_link_comment_draft(
-                original_pr_number,
-                result.fix_pr_url,
-                len(all_findings),
-                pending_count,
-                original_pr.author,
-            )
-
-            if self.debug:
-                print("[DEBUG] Link comment posted on original PR")
 
             # 7. Restore original branch
             self._restore_branch(original_branch, stashed)
