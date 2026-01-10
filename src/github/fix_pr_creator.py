@@ -792,22 +792,43 @@ class FixPRCreator:
                             print(f"[DEBUG] Skipping comment: no commentable lines found")
                         return False
 
-            comment_result = self.github_client.create_review_comment(
-                pr_number=fix_pr_number,
-                body=comment_body,
-                commit_sha=fix_pr.head_sha,
-                path=file_path,
-                line=line_end,
-                start_line=start_line,
-            )
+            # Use finding's commit_hash if available, otherwise fall back to PR head
+            commit_sha = finding.commit_hash or fix_pr.head_sha
 
-            comment_url = comment_result.get("html_url")
-            if self.debug:
-                print(f"[DEBUG] Comment posted successfully for ({finding.number})")
-                if comment_url:
-                    print(f"[DEBUG]   URL: {comment_url}")
+            # Retry logic for GitHub API (may take time to index new commits)
+            import time
+            max_retries = 3
+            retry_delay = 1.0
+            last_error = None
 
-            return comment_url
+            for attempt in range(max_retries):
+                try:
+                    comment_result = self.github_client.create_review_comment(
+                        pr_number=fix_pr_number,
+                        body=comment_body,
+                        commit_sha=commit_sha,
+                        path=file_path,
+                        line=line_end,
+                        start_line=start_line,
+                    )
+
+                    comment_url = comment_result.get("html_url")
+                    if self.debug:
+                        print(f"[DEBUG] Comment posted successfully for ({finding.number})")
+                        if comment_url:
+                            print(f"[DEBUG]   URL: {comment_url}")
+
+                    return comment_url
+
+                except Exception as retry_error:
+                    last_error = retry_error
+                    if attempt < max_retries - 1:
+                        if self.debug:
+                            print(f"[DEBUG] Comment post attempt {attempt + 1} failed, retrying in {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                    else:
+                        raise last_error
 
         except Exception as e:
             console.print(f"[yellow]    警告: ({finding.number}) のコメント投稿に失敗[/yellow]")

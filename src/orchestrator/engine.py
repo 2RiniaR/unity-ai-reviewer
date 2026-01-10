@@ -728,6 +728,9 @@ class ReviewOrchestrator:
         if fix_branch:
             if not git_ops.push(fix_branch):
                 return {"success": False, "error": "git push に失敗しました"}
+            # Wait for GitHub to index the new commit
+            import time
+            time.sleep(1.0)
 
         # Get the commit hash
         commit_hash = git_ops.get_head_commit()
