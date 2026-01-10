@@ -13,6 +13,7 @@ from rich.table import Table
 from src.config import Config
 from src.github import GitHubClient
 from src.github.git_operations import GitOperations
+from src.github.progress_comment import ProgressCommentManager
 from src.models import PRInfo
 from src.orchestrator import ReviewOrchestrator
 
@@ -227,9 +228,25 @@ def run_github_review(
             original_pr_number=pr_number,
         )
 
+        # Initialize progress comment manager
+        progress_manager = ProgressCommentManager(
+            github_client=gh_client,
+            original_pr_number=pr_number,
+            author=pr.author,
+            debug=debug,
+        )
+
         try:
+            # Phase 1 開始時: 進捗コメント投稿
+            comment_id = progress_manager.post_phase1_start()
+
             # Phase 1: Parallel analysis (no edits, no commits)
             orchestrator.start_review(pr_info, changed_files_list, pr_diff=pr_diff)
+
+            # Save progress_comment_id to metadata
+            if orchestrator.metadata and comment_id:
+                orchestrator.metadata.progress_comment_id = comment_id
+
             orchestrator.run_review_phase()
         except Exception as e:
             # Cleanup: restore original branch on failure
@@ -270,6 +287,14 @@ def run_github_review(
             if fix_result.success:
                 console.print("[green]✓ Draft Fix PR を作成しました[/green]")
                 console.print(f"  [bold]URL: {fix_result.fix_pr_url}[/bold]")
+
+                # Phase 2 完了時: 進捗コメント更新
+                progress_manager.comment_id = orchestrator.metadata.progress_comment_id
+                progress_manager.update_phase2_complete(
+                    fix_pr_url=fix_result.fix_pr_url,
+                    fix_pr_number=fix_result.fix_pr_number,
+                    total_findings=findings_count,
+                )
 
                 # Update environment with fix PR number
                 orchestrator.set_env_vars(
@@ -320,6 +345,15 @@ def run_github_review(
                 if fix_results['skipped']:
                     console.print(f"  [dim]スキップ: {len(fix_results['skipped'])} 件[/dim]")
 
+                # Phase 3 完了時: 進捗コメント更新
+                progress_manager.update_phase3_complete(
+                    fix_pr_url=fix_result.fix_pr_url,
+                    fix_pr_number=fix_result.fix_pr_number,
+                    applied_count=len(fix_results['applied']),
+                    failed_count=len(fix_results['failed']),
+                    skipped_count=len(fix_results['skipped']),
+                )
+
                 # Mark draft PR as ready for review
                 if fix_results['applied']:
                     console.print()
@@ -335,6 +369,13 @@ def run_github_review(
         elif create_fix_pr:
             console.print()
             console.print("[yellow]問題が見つからなかったため、Fix PR は作成しませんでした[/yellow]")
+
+            # Phase 1 完了、0件の場合: 進捗コメント更新
+            progress_manager.comment_id = (
+                orchestrator.metadata.progress_comment_id
+                if orchestrator.metadata else None
+            )
+            progress_manager.update_phase1_no_findings()
 
         # Restore original branch after successful operation
         if git and original_branch:

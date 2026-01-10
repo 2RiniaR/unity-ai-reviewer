@@ -159,6 +159,9 @@ class Metadata(BaseModel):
 
     findings: list[Finding] = Field(default_factory=list)
 
+    # Progress comment tracking (Phase 1で投稿したコメントのID)
+    progress_comment_id: int | None = None
+
     def __init__(self, **data: Any) -> None:
         super().__init__(**data)
         # Initialize all reviewers if not provided
