@@ -23,6 +23,7 @@ from src.models import (
     ReviewerType,
     Status,
 )
+from src.github.git_operations import GitOperations
 from src.orchestrator.metadata import MetadataHandler
 
 console = Console()
@@ -645,12 +646,6 @@ class ReviewOrchestrator:
         Returns:
             Dict with success, commit_hash, file, line, line_end, error
         """
-        import re
-        import subprocess
-
-        # Record commit count before to detect if a new commit was made
-        before_commit = self._get_latest_commit_for_finding(finding.number)
-
         system_prompt = f"""あなたはUnity C#プロジェクトのコード修正アシスタントです。
 
 ## 役割
@@ -661,19 +656,11 @@ class ReviewOrchestrator:
 
 1. Readツールで対象ファイルを読み込む
 2. Editツールで修正を適用
-3. 以下のコマンドを順番に実行:
-   ```bash
-   git add <修正したファイル>
-   git commit -m "[PR Review] ({finding.number}) {finding.title}"
-   git push origin {self._env_vars.get('FIX_BRANCH', 'HEAD')}
-   git rev-parse HEAD
-   ```
-4. 最後に `git rev-parse HEAD` の出力（コミットハッシュ）を必ず報告
 
 ## 重要
 
-- 必ず `git rev-parse HEAD` を実行してコミットハッシュを取得し、報告してください
-- コミットハッシュは40文字の16進数文字列です（例: a1b2c3d4e5f6...）
+- git操作（add, commit, push）は行わないでください。Python側で自動的に処理されます。
+- ファイルの修正のみを行ってください。
 
 ## 出力形式
 
@@ -682,8 +669,7 @@ class ReviewOrchestrator:
 {{
   "file": "修正したファイルパス",
   "line": 修正した行番号,
-  "line_end": 修正範囲の終了行番号,
-  "commit_hash": "git rev-parse HEADの出力値"
+  "line_end": 修正範囲の終了行番号
 }}
 ```
 """
@@ -706,107 +692,58 @@ class ReviewOrchestrator:
 
 ---
 
-上記の修正計画に従って修正を適用し、コミット・プッシュしてください。
-最後に必ず `git rev-parse HEAD` でコミットハッシュを取得して報告してください。
+上記の修正計画に従ってファイルを修正してください。
 """
 
-        # Run with tools enabled for fix application
+        # Run with tools enabled for fix application (file editing only)
         result = self.claude_client.run_review(
             system_prompt=system_prompt,
             user_message=user_message,
             debug=self.debug,
-            enable_tools=True,  # Phase 3: Enable tools for editing and committing
+            enable_tools=True,  # Phase 3: Enable tools for editing
             env_vars=self._env_vars if self._env_vars else None,
         )
 
         if result.get("status") == "error":
-            # Even on error, check if commit was created
-            after_commit = self._get_latest_commit_for_finding(finding.number)
-            if after_commit and after_commit != before_commit:
-                return {
-                    "success": True,
-                    "commit_hash": after_commit,
-                    "file": finding.source_file,
-                    "line": finding.source_line,
-                    "line_end": finding.source_line_end,
-                }
             return {"success": False, "error": result.get("error")}
 
-        # Extract fix result from findings
-        findings_data = result.get("findings", [])
-        if findings_data:
-            fix_data = findings_data[0]
-            commit_hash = fix_data.get("commit_hash")
-            if commit_hash:
-                return {
-                    "success": True,
-                    "commit_hash": commit_hash,
-                    "file": fix_data.get("file", finding.source_file),
-                    "line": fix_data.get("line", finding.source_line),
-                    "line_end": fix_data.get("line_end", finding.source_line_end),
-                }
+        # Initialize GitOperations for git operations
+        git_ops = GitOperations(self.config.project.unity_project_path)
 
-        # Try to extract commit hash from text response
-        text = result.get("text", "")
+        # Check if there are uncommitted changes
+        if not git_ops.has_uncommitted_changes():
+            return {"success": False, "error": "修正が適用されませんでした（ファイル変更なし）"}
 
-        # Pattern 1: Look for git rev-parse HEAD output (40-char hash on its own line)
-        hash_patterns = [
-            r'\b([a-f0-9]{40})\b',  # Full 40-char hash
-            r'commit[_\s]*hash[:\s]*[`"\']?([a-f0-9]{7,40})[`"\']?',  # commit_hash: xxx
-            r'rev-parse.*?([a-f0-9]{40})',  # After rev-parse
-        ]
+        # Stage all changes
+        if not git_ops.stage_all():
+            return {"success": False, "error": "git add に失敗しました"}
 
-        for pattern in hash_patterns:
-            hash_match = re.search(pattern, text, re.IGNORECASE)
-            if hash_match:
-                commit_hash = hash_match.group(1)
-                return {
-                    "success": True,
-                    "commit_hash": commit_hash,
-                    "file": finding.source_file,
-                    "line": finding.source_line,
-                    "line_end": finding.source_line_end,
-                }
+        # Commit with standardized message
+        commit_message = f"[PR Review] ({finding.number}) {finding.title}"
+        if not git_ops.commit(commit_message):
+            return {"success": False, "error": "git commit に失敗しました"}
 
-        # Fallback: Check git log for a commit matching this finding's pattern
-        # This handles cases where Claude made the commit but didn't report the hash
-        after_commit = self._get_latest_commit_for_finding(finding.number)
-        if after_commit and after_commit != before_commit:
-            if self.debug:
-                console.print(f"[dim]Debug: Found commit via git log: {after_commit[:7]}[/dim]")
-            return {
-                "success": True,
-                "commit_hash": after_commit,
-                "file": finding.source_file,
-                "line": finding.source_line,
-                "line_end": finding.source_line_end,
-            }
+        # Push to remote
+        fix_branch = self._env_vars.get("FIX_BRANCH") if self._env_vars else None
+        if fix_branch:
+            if not git_ops.push(fix_branch):
+                return {"success": False, "error": "git push に失敗しました"}
+            # Wait for GitHub to index the new commit
+            import time
+            time.sleep(1.0)
 
-        # Last resort: Check if any commit/push operation was performed
-        if "git push" in text.lower() or "git commit" in text.lower():
-            # Try to get the latest commit hash directly
-            try:
-                git_result = subprocess.run(
-                    ["git", "rev-parse", "HEAD"],
-                    cwd=str(self.config.project.unity_project_path),
-                    capture_output=True,
-                    text=True,
-                )
-                if git_result.returncode == 0:
-                    commit_hash = git_result.stdout.strip()
-                    # Only accept if it's a NEW commit (different from before)
-                    if commit_hash and len(commit_hash) == 40 and commit_hash != before_commit:
-                        return {
-                            "success": True,
-                            "commit_hash": commit_hash,
-                            "file": finding.source_file,
-                            "line": finding.source_line,
-                            "line_end": finding.source_line_end,
-                        }
-            except Exception:
-                pass
+        # Get the commit hash
+        commit_hash = git_ops.get_head_commit()
+        if not commit_hash:
+            return {"success": False, "error": "コミットハッシュの取得に失敗しました"}
 
-        return {"success": False, "error": "修正の適用またはコミットに失敗しました"}
+        return {
+            "success": True,
+            "commit_hash": commit_hash,
+            "file": finding.source_file,
+            "line": finding.source_line,
+            "line_end": finding.source_line_end,
+        }
 
     def _get_latest_commit_for_finding(self, finding_number: int) -> str | None:
         """Get the commit hash for a specific finding by searching git log.
