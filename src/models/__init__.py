@@ -11,6 +11,7 @@ from src.models.metadata import (
     ReviewState,
     Status,
 )
+from src.models.usage import UsageTracker
 
 __all__ = [
     "Metadata",
@@ -22,4 +23,5 @@ __all__ = [
     "Finding",
     "Phase",
     "Status",
+    "UsageTracker",
 ]

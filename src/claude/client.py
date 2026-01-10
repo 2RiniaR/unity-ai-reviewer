@@ -221,6 +221,9 @@ class ClaudeClient:
             # Get the text response
             text_response = self._extract_text_response(response)
 
+            # Extract cost information
+            cost_usd = response.get("total_cost_usd", 0.0)
+
             if on_output:
                 on_output(text_response)
 
@@ -229,6 +232,7 @@ class ClaudeClient:
                 "response": response,
                 "text": text_response,
                 "findings": findings,
+                "cost_usd": cost_usd,
                 "stderr": result.stderr if result.stderr else None,
             }
 
