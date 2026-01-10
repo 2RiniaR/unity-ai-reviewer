@@ -428,9 +428,9 @@ class FixPRCreator:
                 f"のレビュー指摘を自動修正したものです。"
             )
 
-        # Count applied vs pending
-        applied_count = len([f for f in findings if f.commit_hash])
-        pending_count = len([f for f in findings if not f.commit_hash])
+        # Count applied vs pending (no_changes is also considered as applied)
+        applied_count = len([f for f in findings if f.commit_hash or f.no_changes])
+        pending_count = len([f for f in findings if not f.commit_hash and not f.no_changes])
 
         lines = [
             "## 🔧 自動修正PR",
@@ -484,6 +484,8 @@ class FixPRCreator:
                 else:
                     commit_link = f"`{short_hash}`"
                 status = f"✅ {commit_link}"
+            elif finding.no_changes:
+                status = "✅ 変更なし"
             else:
                 status = "⏳ 待機中"
 
@@ -595,6 +597,11 @@ class FixPRCreator:
             lines.extend([
                 "",
                 f"🔧 {commit_link}",
+            ])
+        elif finding.no_changes:
+            lines.extend([
+                "",
+                "🔧 変更はありませんでした",
             ])
 
         # Add details section with scenario only
