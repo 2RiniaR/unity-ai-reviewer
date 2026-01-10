@@ -607,16 +607,30 @@ class ReviewOrchestrator:
                 fix_result = self._apply_single_fix(finding)
 
                 if fix_result.get("success"):
-                    finding.commit_hash = fix_result.get("commit_hash")
-                    finding.file = fix_result.get("file", finding.source_file)
-                    finding.line = fix_result.get("line", finding.source_line)
-                    finding.line_end = fix_result.get("line_end", finding.source_line_end)
+                    if fix_result.get("no_changes"):
+                        # No changes needed - mark as success without commit
+                        finding.no_changes = True
+                        finding.file = finding.source_file
+                        finding.line = finding.source_line
+                        finding.line_end = finding.source_line_end
 
-                    results["applied"].append(finding.id)
-                    console.print(f"    [green]✓[/green] コミット: {finding.commit_hash[:7] if finding.commit_hash else 'N/A'}")
+                        results["applied"].append(finding.id)
+                        console.print(f"    [yellow]✓[/yellow] 変更なし")
 
-                    if on_finding_fixed:
-                        on_finding_fixed(finding, True)
+                        if on_finding_fixed:
+                            on_finding_fixed(finding, True)
+                    else:
+                        # Normal success with commit
+                        finding.commit_hash = fix_result.get("commit_hash")
+                        finding.file = fix_result.get("file", finding.source_file)
+                        finding.line = fix_result.get("line", finding.source_line)
+                        finding.line_end = fix_result.get("line_end", finding.source_line_end)
+
+                        results["applied"].append(finding.id)
+                        console.print(f"    [green]✓[/green] コミット: {finding.commit_hash[:7] if finding.commit_hash else 'N/A'}")
+
+                        if on_finding_fixed:
+                            on_finding_fixed(finding, True)
                 else:
                     results["failed"].append(finding.id)
                     error = fix_result.get("error", "Unknown error")
@@ -733,7 +747,7 @@ class ReviewOrchestrator:
 
         # Check if there are uncommitted changes
         if not git_ops.has_uncommitted_changes():
-            return {"success": False, "error": "修正が適用されませんでした（ファイル変更なし）"}
+            return {"success": True, "no_changes": True}
 
         # Stage all changes
         if not git_ops.stage_all():

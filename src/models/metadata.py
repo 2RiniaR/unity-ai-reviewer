@@ -138,6 +138,7 @@ class Finding(BaseModel):
     # Fix result - Phase 3 output
     commit_hash: str | None = None  # Hash of the fix commit
     comment_url: str | None = None  # URL of the PR comment for this finding
+    no_changes: bool = False  # True if fix was attempted but no changes needed
 
 
 class Metadata(BaseModel):
