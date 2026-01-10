@@ -391,3 +391,15 @@ class GitOperations:
             return result.stdout.strip()
         except subprocess.CalledProcessError:
             return None
+
+    def get_head_commit(self) -> str | None:
+        """Get the current HEAD commit SHA.
+
+        Returns:
+            40-character commit SHA, or None on error
+        """
+        try:
+            result = self._run(["rev-parse", "HEAD"])
+            return result.stdout.strip()
+        except subprocess.CalledProcessError:
+            return None
