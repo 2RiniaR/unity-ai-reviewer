@@ -622,9 +622,10 @@ class ReviewOrchestrator:
                     else:
                         # Normal success with commit
                         finding.commit_hash = fix_result.get("commit_hash")
-                        finding.file = fix_result.get("file", finding.source_file)
-                        finding.line = fix_result.get("line", finding.source_line)
-                        finding.line_end = fix_result.get("line_end", finding.source_line_end)
+                        # file/lineはコメント投稿時にgit差分から決定するため、source値を使用
+                        finding.file = finding.source_file
+                        finding.line = finding.source_line
+                        finding.line_end = finding.source_line_end
 
                         results["applied"].append(finding.id)
                         console.print(f"    [green]✓[/green] コミット: {finding.commit_hash[:7] if finding.commit_hash else 'N/A'}")
@@ -693,16 +694,9 @@ class ReviewOrchestrator:
 - git操作（add, commit, push）は行わないでください。Python側で自動的に処理されます。
 - ファイルの修正のみを行ってください。
 
-## 出力形式
+## 完了報告
 
-修正完了後、以下のJSON形式で報告してください:
-```json
-{{
-  "file": "修正したファイルパス",
-  "line": 修正した行番号,
-  "line_end": 修正範囲の終了行番号
-}}
-```
+修正が完了したら、変更内容を簡潔に報告してください。
 """
 
         user_message = f"""

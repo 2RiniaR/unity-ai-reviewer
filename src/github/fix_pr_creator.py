@@ -725,10 +725,27 @@ class FixPRCreator:
             )
 
             # Determine file and lines for the comment
-            # Prefer fix location (file/line), fall back to source location
-            file_path = finding.file or finding.source_file
-            line = finding.line or finding.source_line
-            line_end = finding.line_end or finding.source_line_end or line
+            # Use git diff to find the largest hunk from the commit
+            file_path = None
+            line = None
+            line_end = None
+
+            if finding.commit_hash:
+                diff = self.git.get_commit_diff(finding.commit_hash)
+                if diff:
+                    hunk_info = self.git.find_largest_hunk(diff)
+                    if hunk_info:
+                        file_path, line, line_end = hunk_info
+                        if self.debug:
+                            print(f"[DEBUG] ({finding.number}): Largest hunk: {file_path}:{line}-{line_end}")
+
+            # Fallback: use source location if no hunk found
+            if not file_path or not line:
+                file_path = finding.source_file
+                line = finding.source_line
+                line_end = finding.source_line_end or line
+                if self.debug:
+                    print(f"[DEBUG] ({finding.number}): Using source location fallback: {file_path}:{line}")
 
             # Get commentable lines to find a valid location
             commentable_lines = self.github_client.get_commentable_lines(fix_pr_number)
@@ -827,13 +844,23 @@ class FixPRCreator:
                         raise last_error
 
         except Exception as e:
-            console.print(f"[yellow]    警告: ({finding.number}) のコメント投稿に失敗[/yellow]")
             if self.debug:
-                print(f"[DEBUG] Failed to post comment for ({finding.number}) {finding.id}")
-                print(f"[DEBUG]   file={finding.file or finding.source_file}")
-                print(f"[DEBUG]   line={finding.line or finding.source_line}")
+                print(f"[DEBUG] Review comment failed for ({finding.number}), falling back to issue comment")
                 print(f"[DEBUG]   Error: {e}")
-            return None
+
+            # Fallback to issue comment
+            try:
+                fallback_body = f"**({finding.number}) {finding.title}**\n\n{comment_body}"
+                result = self.github_client.create_issue_comment(fix_pr_number, fallback_body)
+                comment_url = result.get("html_url")
+                if self.debug:
+                    print(f"[DEBUG] Issue comment posted successfully: {comment_url}")
+                return comment_url
+            except Exception as fallback_error:
+                console.print(f"[yellow]    警告: ({finding.number}) のコメント投稿に失敗[/yellow]")
+                if self.debug:
+                    print(f"[DEBUG] Issue comment also failed: {fallback_error}")
+                return None
 
     def update_pr_body(
         self,
