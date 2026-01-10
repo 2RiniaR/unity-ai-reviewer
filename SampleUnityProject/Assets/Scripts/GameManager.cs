@@ -6,7 +6,7 @@ namespace SampleGame
 {
     public class GameManager : MonoBehaviour
     {
-        private List<Enemy> _enemies;
+        private List<Enemy> _enemies = new List<Enemy>();
 
         private void Update()
         {
@@ -15,6 +15,10 @@ namespace SampleGame
 
         private void ProcessFirstEnemy()
         {
+            if (_enemies == null || _enemies.Count == 0)
+            {
+                return;
+            }
             var first = _enemies[0];
             first.TakeDamage(10);
         }
