@@ -21,11 +21,6 @@ namespace SampleGame
             first.TakeDamage(10);
         }
 
-        private void UnusedMethod()
-        {
-            Debug.Log("unused");
-        }
-
         public string LoadData()
         {
             using (var reader = new StreamReader("data.txt"))
