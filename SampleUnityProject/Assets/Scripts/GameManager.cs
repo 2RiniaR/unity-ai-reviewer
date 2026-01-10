@@ -25,7 +25,13 @@ namespace SampleGame
 
         public string LoadData()
         {
-            using (var reader = new StreamReader("data.txt"))
+            var filePath = "data.txt";
+            if (!File.Exists(filePath))
+            {
+                Debug.LogWarning($"File not found: {filePath}");
+                return string.Empty;
+            }
+            using (var reader = new StreamReader(filePath))
             {
                 return reader.ReadToEnd();
             }
