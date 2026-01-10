@@ -4,7 +4,7 @@ namespace SampleGame.Utilities
     {
         public static bool IsEmpty(string value)
         {
-            return value == null || value.Length == 0;
+            return string.IsNullOrEmpty(value);
         }
     }
 }
