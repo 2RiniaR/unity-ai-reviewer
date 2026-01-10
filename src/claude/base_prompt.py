@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from src.models import ReviewerType
-from src.claude.reviewers import REVIEWER_PROMPTS
+from src.claude.prompt_loader import load_reviewer_prompt
 
 # Base system prompt for Phase 1: Analysis only (no fix application)
 BASE_REVIEWER_PROMPT = """あなたはUnity C#プロジェクトのエキスパートコードレビュワーです。
@@ -135,7 +135,7 @@ def get_reviewer_prompt(reviewer_type: ReviewerType) -> str:
     Returns:
         Complete system prompt for the reviewer
     """
-    specific_prompt = REVIEWER_PROMPTS.get(reviewer_type, "")
+    specific_prompt = load_reviewer_prompt(reviewer_type)
     return BASE_REVIEWER_PROMPT + specific_prompt
 
 

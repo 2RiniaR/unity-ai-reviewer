@@ -4,9 +4,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
+
+# 動的にReviewerType Enumを生成
+# NOTE: 循環インポートを避けるため、reviewer_registryは他のモデルに依存しない
+from src.reviewer_registry import get_reviewer_type
+
+ReviewerType = get_reviewer_type()
+
+if TYPE_CHECKING:
+    # 型チェック時のみ使用（実行時は上で定義したReviewerTypeを使用）
+    pass
 
 
 class Phase(str, Enum):
@@ -28,36 +38,6 @@ class Status(str, Enum):
     COMPLETED = "completed"
     SKIPPED = "skipped"
     FAILED = "failed"
-
-
-class ReviewerType(str, Enum):
-    """Types of reviewers."""
-
-    WHEEL_REINVENTION = "wheel_reinvention"
-    RUNTIME_ERROR = "runtime_error"
-    GC_ALLOCATION = "gc_allocation"
-    RESOURCE_MANAGEMENT = "resource_management"
-    EFFICIENCY = "efficiency"
-    CONVENTION = "convention"
-    SECURITY = "security"
-    UNUSED_CODE = "unused_code"
-    IMPACT_ANALYSIS = "impact_analysis"
-
-    @property
-    def display_name(self) -> str:
-        """Get Japanese display name for the reviewer."""
-        names = {
-            "wheel_reinvention": "車輪の再発明",
-            "runtime_error": "実行時エラー",
-            "gc_allocation": "GCアロケーション",
-            "resource_management": "リソース管理",
-            "efficiency": "効率性",
-            "convention": "コーディング規約",
-            "security": "セキュリティ",
-            "unused_code": "未使用コード",
-            "impact_analysis": "影響範囲分析",
-        }
-        return names.get(self.value, self.value)
 
 
 class ChangedFile(BaseModel):

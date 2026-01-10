@@ -4,19 +4,39 @@
 
 PythonからClaudeを呼び出し、Pull Requestに対して反復的にコード探索・レビューを行うシステム
 
-## レビュー観点（確定版）
+## レビュー観点（動的生成）
 
-各観点ごとに独立したレビュワーを持ち、責務を明確にする。
+レビュワーは `reviewers/` ディレクトリのMarkdownファイルから**動的に生成**される。
+ファイル名がレビュワーID、フロントマターの `title` が日本語表示名となる。
 
-1. **runtime_error** - 実行時エラー（NullReference、OutOfRange、例外発生の可能性）
-2. **security** - セキュリティ（tokenが含まれていたり、危険なコードがないか）
-3. **gc_allocation** - GCアロケーション（回避可能なヒープアロケーションがないか）
-4. **resource_management** - リソース管理（Dispose漏れ、イベント解除漏れ、メモリリーク、キャッシュクリア漏れ）
-5. **efficiency** - パフォーマンス効率（非効率なアルゴリズム、不要なループ、キャッシュ可能な再計算）
-6. **convention** - 慣習違反（命名規則、名前空間などプロジェクトの慣習に従っているか）
-7. **unused_code** - 未使用実装（余計な実装や未使用コードが残っていないか）
-8. **wheel_reinvention** - 車輪の再発明（Util系など既存実装との重複がないか）
-9. **impact_analysis** - 影響範囲分析（他機能への影響検出、類似機能の変更漏れ検出）
+### レビュワーの追加方法
+
+1. `reviewers/` に新しいMarkdownファイルを作成（例: `new_reviewer.md`）
+2. ファイルの先頭にYAMLフロントマターで `title` を定義：
+   ```markdown
+   ---
+   title: 新しいレビュワー
+   ---
+
+   ## 責務
+   ...
+   ```
+3. `config.yaml` の `enabled_reviewers` に追加
+4. システムを再起動すると自動的に認識される
+
+### 現在のレビュワー一覧
+
+| ID | 日本語名 | 説明 |
+|---|---|---|
+| runtime_error | 実行時エラー | NullReference、OutOfRange、例外発生の可能性 |
+| security | セキュリティ | tokenが含まれていたり、危険なコードがないか |
+| gc_allocation | GCアロケーション | 回避可能なヒープアロケーションがないか |
+| resource_management | リソース管理 | Dispose漏れ、イベント解除漏れ、メモリリーク |
+| efficiency | 効率性 | 非効率なアルゴリズム、不要なループ |
+| convention | コーディング規約 | 命名規則、名前空間などプロジェクトの慣習 |
+| unused_code | 未使用コード | 余計な実装や未使用コードが残っていないか |
+| wheel_reinvention | 車輪の再発明 | Util系など既存実装との重複がないか |
+| impact_analysis | 影響範囲分析 | 他機能への影響検出、類似機能の変更漏れ検出 |
 
 ## システム要件
 
@@ -77,16 +97,31 @@ reviewer/
 ├── config.example.yaml      # 設定ファイルのテンプレート
 ├── config.yaml              # 設定ファイル（git管理外）
 ├── pyproject.toml           # Python プロジェクト設定
+├── reviewers/               # レビュワー別プロンプト（Markdown、動的読み込み）
+│   ├── runtime_error.md     # フロントマターでtitleを定義
+│   ├── security.md
+│   ├── gc_allocation.md
+│   ├── resource_management.md
+│   ├── efficiency.md
+│   ├── convention.md
+│   ├── unused_code.md
+│   ├── wheel_reinvention.md
+│   └── impact_analysis.md
 ├── src/
 │   ├── main.py              # エントリーポイント
 │   ├── config.py            # 設定管理
 │   ├── models/              # データモデル（Pydantic）
+│   ├── reviewer_registry/   # レビュワー動的生成
+│   │   ├── __init__.py      # API: get_reviewer_type(), get_display_name()
+│   │   ├── loader.py        # Markdownスキャン・フロントマター解析
+│   │   └── registry.py      # 動的Enum生成
 │   ├── orchestrator/        # 反復探索エンジン
 │   │   └── engine.py        # 3フェーズ実行エンジン
 │   ├── claude/              # Claude CLI連携
 │   │   ├── client.py        # CLIクライアント
-│   │   ├── prompts/         # プロンプトテンプレート
-│   │   └── reviewers/       # レビュワー別プロンプト（9種類）
+│   │   ├── base_prompt.py   # ベースプロンプト
+│   │   ├── prompt_loader.py # プロンプトローダー
+│   │   └── reviewers/       # 後方互換性用モジュール
 │   ├── github/              # GitHub連携
 │   │   ├── client.py        # gh CLI経由のAPI操作
 │   │   ├── fix_pr_creator.py # Fix PR作成・コメント投稿
