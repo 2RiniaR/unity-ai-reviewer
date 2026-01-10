@@ -2,9 +2,7 @@ namespace SampleGame.Utilities
 {
     public static class StringHelper
     {
-        public static bool IsEmpty(string value)
-        {
-            return value == null || value.Length == 0;
-        }
+        // IsEmpty メソッドは string.IsNullOrEmpty と同等のため削除しました。
+        // 呼び出し元では string.IsNullOrEmpty(value) を使用してください。
     }
 }
