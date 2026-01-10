@@ -26,8 +26,10 @@ namespace SampleGame
 
         public string LoadData()
         {
-            var reader = new StreamReader("data.txt");
-            return reader.ReadToEnd();
+            using (var reader = new StreamReader("data.txt"))
+            {
+                return reader.ReadToEnd();
+            }
         }
     }
 
