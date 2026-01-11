@@ -37,6 +37,7 @@ PythonからClaudeを呼び出し、Pull Requestに対して反復的にコー�
 | unused_code | 未使用コード | 余計な実装や未使用コードが残っていないか |
 | wheel_reinvention | 車輪の再発明 | Util系など既存実装との重複がないか |
 | impact_analysis | 影響範囲分析 | 他機能への影響検出、類似機能の変更漏れ検出 |
+| semantic_placement | 実装箇所 | 実装箇所が意味的に適切かどうかの検証 |
 
 ## システム要件
 
