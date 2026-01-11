@@ -19,9 +19,11 @@ review:
     - unused_code
     - wheel_reinvention
     - impact_analysis
+    - semantic_placement
   # 報告のみで修正を行わないレビュワー
   report_only_reviewers:
     - impact_analysis
+    - semantic_placement
 
 claude:
   model: opus  # sonnet または opus

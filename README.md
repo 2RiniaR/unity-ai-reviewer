@@ -4,13 +4,13 @@ Claude CLI を使用した自動PRレビュー＆修正システム
 
 ## 概要
 
-Unity AI Reviewer は、Pull Request のコードを自動でレビューし、問題を検出して修正PRを作成するツールです。Unity C# プロジェクト向けに最適化されており、9種類の専門レビュワーが並列で分析を行います。
+Unity AI Reviewer は、Pull Request のコードを自動でレビューし、問題を検出して修正PRを作成するツールです。Unity C# プロジェクト向けに最適化されており、10種類の専門レビュワーが並列で分析を行います。
 
 [サンプルはこちらから](https://github.com/2RiniaR/unity-ai-reviewer/pull/7)
 
 ### 主な特徴
 
-- **自動レビュー**: 9つの観点から並列でコードレビューを実行
+- **自動レビュー**: 10の観点から並列でコードレビューを実行
 - **自動修正PR作成**: 検出した問題に対する修正を自動で適用し、PRを作成
 - **ローカルレビュー**: GitHub連携なしでローカルブランチのレビューも可能
 - **Unity対応**: Unity C# プロジェクトに特化したレビュー観点
@@ -29,6 +29,7 @@ Unity AI Reviewer は、Pull Request のコードを自動でレビューし、�
 | `unused_code` | 未使用の実装やコード |
 | `wheel_reinvention` | 既存Util等との重複実装 |
 | `impact_analysis` | 他機能への影響、類似機能の変更漏れ |
+| `semantic_placement` | 実装箇所が意味的に適切かどうかの検証 |
 
 ## クイックスタート
 
@@ -160,8 +161,10 @@ review:
     - unused_code
     - wheel_reinvention
     - impact_analysis
+    - semantic_placement
   report_only_reviewers:  # 報告のみで修正を行わないレビュワー
     - impact_analysis
+    - semantic_placement
 
 claude:
   model: opus  # sonnet または opus
@@ -188,7 +191,7 @@ Unity AI Reviewer は3つのフェーズでレビューから修正PRの作成�
 
 #### Phase 1: 並列分析
 
-- 9個のレビュワーが **並列実行**（ThreadPoolExecutor）
+- 10個のレビュワーが **並列実行**（ThreadPoolExecutor）
 - 各レビュワーは問題を検出し、修正計画（fix_plan）と修正方法の要約（fix_summary）を出力
 - この段階ではファイル編集は行わない（分析のみ）
 - Claude CLI を `--tools Read` モードで実行
@@ -285,10 +288,20 @@ ruff format .
 
 ### 新しいレビュワーの追加
 
-1. `src/claude/reviewers/` に新しいレビュワーファイルを作成
-2. `src/models/reviewer_type.py` に新しいタイプを追加
-3. `src/claude/base_prompt.py` でレビュワーを登録
-4. `config.example.yaml` の `enabled_reviewers` リストを更新
+1. `reviewers/` ディレクトリに新しい Markdown ファイルを作成（例: `new_reviewer.md`）
+2. ファイルの先頭に YAML フロントマターで `title` を定義
+3. `config.yaml` の `enabled_reviewers` リストに追加
+4. システム再起動で自動的に認識される
+
+```markdown
+---
+title: 新しいレビュワー
+---
+
+## 責務
+
+このレビュワーの責務は...
+```
 
 ### プルリクエスト
 
